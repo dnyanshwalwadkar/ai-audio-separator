@@ -111,11 +111,11 @@ if uploaded_file is not None:
                     
         # Check if loops exist on disk and display them unconditionally
         if os.path.exists(loop_output_dir):
-            generated_loops = [os.path.join(loop_output_dir, f) for f in os.listdir(loop_output_dir) if f.endswith('.wav')]
+            generated_loops = [os.path.join(loop_output_dir, f) for f in os.listdir(loop_output_dir) if f.endswith('.wav') and not os.path.basename(f).startswith('vocal_')]
             generated_loops.sort()
             
             if generated_loops:
-                st.success(f"Generated {len(generated_loops)} loops successfully!")
+                st.success(f"Generated {len(generated_loops)} instrumental loops successfully!")
                 
                 # Display players and downloads in columns
                 for row_idx in range(0, len(generated_loops), 2):
@@ -133,6 +133,52 @@ if uploaded_file is not None:
                                     file_name=f"{base_name}_loop_{loop_num}.wav",
                                     mime="audio/wav",
                                     key=f"dl_loop_{loop_num}"
+                                )
+                                
+        st.markdown("---")
+        st.markdown("### 🎤 Rhythmic Vocal Loops")
+        st.markdown("Extract perfect rhythmic vocal loops, mathematically aligned to the drum beats of the instrumental track.")
+        
+        if st.button("Generate Vocal Loops", type="secondary"):
+            with st.spinner("Analyzing beats and slicing vocals... (This takes about a minute)"):
+                try:
+                    from beat_looper import generate_vocal_loops
+                    
+                    generate_vocal_loops(
+                        instrumental_path=accompaniment_path, 
+                        vocal_path=vocals_path,
+                        output_dir=loop_output_dir,
+                        max_loops=4,
+                        num_beats=16,
+                        repetitions=8
+                    )
+                    st.rerun() # Refresh to show the new audio files
+                except Exception as e:
+                    st.error(f"Failed to generate vocal loops: {str(e)}")
+                    
+        # Check if vocal loops exist
+        if os.path.exists(loop_output_dir):
+            generated_vocal_loops = [os.path.join(loop_output_dir, f) for f in os.listdir(loop_output_dir) if f.endswith('.wav') and os.path.basename(f).startswith('vocal_')]
+            generated_vocal_loops.sort()
+            
+            if generated_vocal_loops:
+                st.success(f"Generated {len(generated_vocal_loops)} vocal loops successfully!")
+                
+                for row_idx in range(0, len(generated_vocal_loops), 2):
+                    row_loops = generated_vocal_loops[row_idx:row_idx+2]
+                    cols = st.columns(len(row_loops))
+                    for col_idx, loop_path in enumerate(row_loops):
+                        loop_num = row_idx + col_idx + 1
+                        with cols[col_idx]:
+                            st.markdown(f"**Vocal Loop {loop_num}**")
+                            st.audio(loop_path, format="audio/wav")
+                            with open(loop_path, "rb") as lf:
+                                st.download_button(
+                                    label=f"⬇️ Download Vocal {loop_num}",
+                                    data=lf,
+                                    file_name=f"{base_name}_vocal_loop_{loop_num}.wav",
+                                    mime="audio/wav",
+                                    key=f"dl_vocal_loop_{loop_num}"
                                 )
 
 # Add a small footer

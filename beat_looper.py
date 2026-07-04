@@ -74,6 +74,68 @@ def generate_multiple_loops(input_path, output_dir, max_loops=4, num_beats=16, r
         
     return generated_files
 
+def generate_vocal_loops(instrumental_path, vocal_path, output_dir, max_loops=4, num_beats=16, repetitions=8, crossfade_ms=50):
+    """
+    Analyzes the instrumental track ONCE for rhythm, and uses those exact timestamps 
+    to slice and loop the vocal track.
+    Returns a list of generated file paths.
+    """
+    if not os.path.exists(instrumental_path) or not os.path.exists(vocal_path):
+        raise FileNotFoundError("Instrumental or vocal file not found.")
+
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 1. Load Instrumental and Detect Beats (Drums dictate rhythm)
+    y, sr = librosa.load(instrumental_path, sr=None)
+    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+    
+    total_beats = len(beat_times)
+    
+    if total_beats < num_beats:
+        raise ValueError(f"Track too short. Only {total_beats} beats detected.")
+        
+    start_offset = 16 if total_beats > 32 else 0
+    available_beats = total_beats - start_offset - num_beats
+    
+    if available_beats <= 0:
+        start_beats = [0]
+    else:
+        spacing = max(available_beats // max_loops, num_beats)
+            
+        start_beats = []
+        curr_beat = start_offset
+        while curr_beat + num_beats < total_beats and len(start_beats) < max_loops:
+            start_beats.append(curr_beat)
+            curr_beat += spacing
+            
+        if not start_beats:
+            start_beats = [0]
+
+    # 2. Slice the VOCAL track using the instrumental timestamps
+    vocal_audio = AudioSegment.from_file(vocal_path)
+    generated_files = []
+    
+    for i, start_beat in enumerate(start_beats):
+        start_time_sec = beat_times[start_beat]
+        end_time_sec = beat_times[start_beat + num_beats]
+        
+        start_time_ms = int(start_time_sec * 1000)
+        end_time_ms = int(end_time_sec * 1000)
+        
+        loop_slice = vocal_audio[start_time_ms:end_time_ms]
+        
+        final_track = loop_slice
+        for _ in range(repetitions - 1):
+            final_track = final_track.append(loop_slice, crossfade=crossfade_ms)
+            
+        out_filename = f"vocal_loop_part_{i+1}.wav"
+        out_path = os.path.join(output_dir, out_filename)
+        final_track.export(out_path, format="wav")
+        generated_files.append(out_path)
+        
+    return generated_files
+
 def create_smooth_loop(input_path, output_path, start_beat=16, num_beats=16, repetitions=4, crossfade_ms=50):
     """
     Extracts a perfectly timed musical loop from an audio file and repeats it.
