@@ -21,14 +21,14 @@ A full-stack, single-page web application built with Streamlit that separates au
 
 ## 🚀 Inputs & Outputs Example
 
-To use the tool, you simply upload a mixed audio file, and the AI extracts the isolated components.
+To use the tool, you simply upload a mixed audio file, and the AI extracts the isolated components. You can listen to the actual files below:
 
 **Input:**
-- `Ajit_Kadkade_-_Vithoba_Rakhumai_-_(320_Kbps).mp3` (Mixed Audio Track)
+- [Ajit_Kadkade_-_Vithoba_Rakhumai.mp3](examples/Ajit_Kadkade_-_Vithoba_Rakhumai_-_(320_Kbps).mp3) (Mixed Audio Track)
 
 **Outputs:**
-- 🎤 `Ajit_Kadkade_vocals.wav` (Isolated Vocals)
-- 🎸 `Ajit_Kadkade_instruments.wav` (Isolated Accompaniment / Instruments)
+- 🎤 [Ajit_Kadkade_vocals.wav](examples/vocals.wav) (Isolated Vocals)
+- 🎸 [Ajit_Kadkade_instruments.wav](examples/instruments.wav) (Isolated Accompaniment / Instruments)
 
 ---
 
