@@ -25,6 +25,12 @@ if uploaded_file is not None:
     safe_filename = uploaded_file.name.replace(" ", "_")
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
+    # Define output paths for the current file
+    base_name = os.path.splitext(safe_filename)[0]
+    spleeter_output_folder = os.path.join(OUTPUT_DIR, base_name)
+    vocals_path = os.path.join(spleeter_output_folder, "vocals.wav")
+    accompaniment_path = os.path.join(spleeter_output_folder, "accompaniment.wav")
+    
     # Save the uploaded file securely to local disk
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
