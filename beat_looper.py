@@ -9,32 +9,84 @@ from pydub import AudioSegment
 import argparse
 import os
 
+def generate_multiple_loops(input_path, output_dir, max_loops=4, num_beats=16, repetitions=8, crossfade_ms=50):
+    """
+    Analyzes audio ONCE and generates multiple distinct loops from different parts of the song.
+    Returns a list of generated file paths.
+    """
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"File '{input_path}' not found.")
+
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 1. Load Audio and Detect Beats (Heavy Operation, doing this ONLY ONCE)
+    y, sr = librosa.load(input_path, sr=None)
+    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+    
+    total_beats = len(beat_times)
+    
+    # If the track is too short for even one loop
+    if total_beats < num_beats:
+        raise ValueError(f"Track too short. Only {total_beats} beats detected.")
+        
+    # We want up to max_loops distinct starting beats, spaced out evenly.
+    # Start the first one at beat 16 if possible to skip intro.
+    start_offset = 16 if total_beats > 32 else 0
+    available_beats = total_beats - start_offset - num_beats
+    
+    if available_beats <= 0:
+        start_beats = [0]
+    else:
+        # Calculate spacing for 'max_loops'
+        spacing = max(available_beats // max_loops, num_beats)
+            
+        start_beats = []
+        curr_beat = start_offset
+        while curr_beat + num_beats < total_beats and len(start_beats) < max_loops:
+            start_beats.append(curr_beat)
+            curr_beat += spacing
+            
+        if not start_beats:
+            start_beats = [0]
+
+    # 2. Pydub Slicing and Looping (Fast Operation)
+    audio = AudioSegment.from_file(input_path)
+    generated_files = []
+    
+    for i, start_beat in enumerate(start_beats):
+        start_time_sec = beat_times[start_beat]
+        end_time_sec = beat_times[start_beat + num_beats]
+        
+        start_time_ms = int(start_time_sec * 1000)
+        end_time_ms = int(end_time_sec * 1000)
+        
+        loop_slice = audio[start_time_ms:end_time_ms]
+        
+        final_track = loop_slice
+        for _ in range(repetitions - 1):
+            final_track = final_track.append(loop_slice, crossfade=crossfade_ms)
+            
+        out_filename = f"loop_part_{i+1}.wav"
+        out_path = os.path.join(output_dir, out_filename)
+        final_track.export(out_path, format="wav")
+        generated_files.append(out_path)
+        
+    return generated_files
+
 def create_smooth_loop(input_path, output_path, start_beat=16, num_beats=16, repetitions=4, crossfade_ms=50):
     """
     Extracts a perfectly timed musical loop from an audio file and repeats it.
-    
-    Args:
-        input_path (str): Path to the input audio (preferably an instrumental track).
-        output_path (str): Path to save the looped output.
-        start_beat (int): Which beat to start the loop on (to skip intros).
-        num_beats (int): How many beats to include in the loop (multiples of 4 or 8 are best).
-        repetitions (int): How many times to loop the clip.
-        crossfade_ms (int): Duration of the crossfade in milliseconds to avoid clicks.
     """
     if not os.path.exists(input_path):
         print(f"❌ Error: File '{input_path}' not found.")
         return
 
     print(f"🎵 Loading audio for analysis: {input_path}")
-    # Load audio with librosa for beat detection
-    # sr=None preserves the original sampling rate
     y, sr = librosa.load(input_path, sr=None)
     
     print("🥁 Detecting tempo and beats...")
-    # Get tempo and beat frames based on the onset envelope (transients/drums)
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
-    
-    # Convert frames to exact timestamps (in seconds)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
     
     if len(beat_times) < start_beat + num_beats:
@@ -47,31 +99,24 @@ def create_smooth_loop(input_path, output_path, start_beat=16, num_beats=16, rep
         t_val = tempo
     print(f"⏱️ Estimated Tempo: {t_val:.1f} BPM")
     
-    # Calculate exactly where to slice (in seconds)
     start_time_sec = beat_times[start_beat]
     end_time_sec = beat_times[start_beat + num_beats]
     
     print(f"✂️ Slicing audio from {start_time_sec:.2f}s (Beat {start_beat}) to {end_time_sec:.2f}s (Beat {start_beat + num_beats})")
     
-    # Now, load the high-quality audio with Pydub for manipulation
-    # Pydub works in milliseconds
     audio = AudioSegment.from_file(input_path)
     
     start_time_ms = int(start_time_sec * 1000)
     end_time_ms = int(end_time_sec * 1000)
     
-    # Extract the exact musical loop slice
     loop_slice = audio[start_time_ms:end_time_ms]
     
     print(f"🔄 Creating {repetitions} smooth repetitions with {crossfade_ms}ms crossfade...")
     
-    # Create the repeating track
     final_track = loop_slice
     for _ in range(repetitions - 1):
-        # Append the slice again, applying a crossfade to mask any clicks at the zero-crossing
         final_track = final_track.append(loop_slice, crossfade=crossfade_ms)
         
-    # Export the final looped audio
     print(f"💾 Saving looped audio to: {output_path}")
     final_track.export(output_path, format="wav")
     print("✅ Done! You can now listen to your smooth loop.")

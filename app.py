@@ -80,6 +80,50 @@ if uploaded_file is not None:
                                 file_name=f"{base_name}_instruments.wav",
                                 mime="audio/wav"
                             )
+                    
+                    st.markdown("---")
+                    st.markdown("### 🔁 Rhythmic Loop Generator")
+                    st.markdown("Extract perfect rhythmic loops from the instrumental track automatically.")
+                    
+                    if st.button("Generate Instrumental Loops", type="secondary"):
+                        with st.spinner("Analyzing beats and generating up to 4 distinct loops... (This takes about a minute)"):
+                            try:
+                                from beat_looper import generate_multiple_loops
+                                
+                                loop_output_dir = os.path.join(spleeter_output_folder, "loops")
+                                generated_loops = generate_multiple_loops(
+                                    input_path=accompaniment_path, 
+                                    output_dir=loop_output_dir,
+                                    max_loops=4,
+                                    num_beats=16,
+                                    repetitions=8
+                                )
+                                
+                                if generated_loops:
+                                    st.success(f"Generated {len(generated_loops)} loops successfully!")
+                                    
+                                    # Display players and downloads in columns
+                                    # Since there can be up to 4, we chunk them into rows of 2 for better UI
+                                    for row_idx in range(0, len(generated_loops), 2):
+                                        row_loops = generated_loops[row_idx:row_idx+2]
+                                        cols = st.columns(len(row_loops))
+                                        for col_idx, loop_path in enumerate(row_loops):
+                                            loop_num = row_idx + col_idx + 1
+                                            with cols[col_idx]:
+                                                st.markdown(f"**Loop {loop_num}**")
+                                                st.audio(loop_path, format="audio/wav")
+                                                with open(loop_path, "rb") as lf:
+                                                    st.download_button(
+                                                        label=f"⬇️ Download Loop {loop_num}",
+                                                        data=lf,
+                                                        file_name=f"{base_name}_loop_{loop_num}.wav",
+                                                        mime="audio/wav",
+                                                        key=f"dl_loop_{loop_num}"
+                                                    )
+                                else:
+                                    st.warning("No loops could be generated. The track might be too short.")
+                            except Exception as e:
+                                st.error(f"Failed to generate loops: {str(e)}")
                 else:
                     st.error("Separation failed: Output files not found. Please ensure FFmpeg is installed and accessible.")
                     
