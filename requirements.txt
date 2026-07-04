@@ -5,3 +5,4 @@ urllib3<2
 tensorflow<2.16
 numba==0.60.0
 llvmlite==0.43.0
+pydub
